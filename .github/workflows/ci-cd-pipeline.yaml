@@ -1,0 +1,82 @@
+# file .github/workflows/ci-cd-pipeline.yaml
+name: CI/CD Pipeline
+run-name: ${{ github.actor }} triggered the action 🚀
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.3
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11.3"
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles("**/requirements.txt") }}
+      
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Check Source Code Format (Black Check)
+        run: black --check --diff src/ tests/ ingestion/
+        continue-on-error: true  # don't fail, just report
+      
+      - name: Analyze Source Code (Flake8 Linting)
+        run: flake8 src/ tests/ ingestion/ --max-line-length=160 --extend-ignore=E203,W503
+      
+      - name: Source Code Typing Check (mypy Checking)
+        run: |
+          mypy src/ tests/ ingestion/ --ignore-missing-imports
+  
+  test:
+    needs: lint-and-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11.3
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11.3"
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles("**/requirements.txt") }}
+      
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run Tests with Coverage
+        run: |
+          pytest tests/ -v --tb=short --cov=src --cov=ingestion --cov-report=html --cov-report=xml
+      
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 7
+  
+  prepare-deploy:
+    needs: test
+    if: github.ref == "refs/heads/main" && github.event_name == "push"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start Deployment
+        run: echo "All checks passed!"
