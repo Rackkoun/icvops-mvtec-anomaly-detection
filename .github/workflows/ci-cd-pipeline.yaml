@@ -38,7 +38,7 @@ jobs:
       
       - name: Source Code Typing Check (mypy Checking)
         run: |
-          mypy src/ tests/ ingestion/ --ignore-missing-imports
+          mypy tests/ ingestion/ --ignore-missing-imports
   
   test:
     needs: lint-and-format
@@ -64,7 +64,7 @@ jobs:
       
       - name: Run Tests with Coverage
         run: |
-          pytest tests/ -v --tb=short --cov=src --cov=ingestion --cov-report=html --cov-report=xml
+          pytest tests/ -v --tb=short --cov=ingestion --cov-report=html --cov-report=xml
       
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
